@@ -5,6 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Sprout, CheckCircle2 } from 'lucide-react';
 
+interface SeedDatabaseProps {
+  compact?: boolean;
+  onSeeded?: () => void;
+}
+
 const DSA_QUESTIONS = [
   // ===== EASY (10) =====
   {
@@ -295,7 +300,7 @@ const DSA_QUESTIONS = [
   }
 ];
 
-export function SeedDatabase() {
+export function SeedDatabase({ compact = false, onSeeded }: SeedDatabaseProps) {
   const { toast } = useToast();
   const [isSeeding, setIsSeeding] = useState(false);
   const [seeded, setSeeded] = useState(false);
@@ -312,7 +317,7 @@ export function SeedDatabase() {
 
       if (checkError) throw checkError;
 
-      if (existing && existing.length > 0) {
+      if (existing && existing.length > 0 && !compact) {
         const confirmed = window.confirm(
           'Practice questions already exist. Do you want to add 40 more questions? (This will not delete existing ones)'
         );
@@ -341,6 +346,7 @@ export function SeedDatabase() {
         title: '🌱 Database Seeded!',
         description: `Successfully added ${DSA_QUESTIONS.length} DSA questions across all difficulty levels.`
       });
+      onSeeded?.();
     } catch (error) {
       console.error('Error seeding database:', error);
       toast({
@@ -352,6 +358,29 @@ export function SeedDatabase() {
       setIsSeeding(false);
     }
   };
+
+  if (compact) {
+    return (
+      <Button 
+        onClick={handleSeed} 
+        disabled={isSeeding}
+        size="sm"
+        className="w-full neon-glow-green"
+      >
+        {isSeeding ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Seeding...
+          </>
+        ) : (
+          <>
+            <Sprout className="mr-2 h-4 w-4" />
+            Seed 40 Questions
+          </>
+        )}
+      </Button>
+    );
+  }
 
   return (
     <Card className="glass-card border-accent/30">
@@ -367,17 +396,17 @@ export function SeedDatabase() {
       <CardContent>
         <div className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-            <div className="p-2 rounded bg-green-500/10 border border-green-500/30">
-              <span className="font-medium text-green-400">Easy:</span> 10 questions
+            <div className="p-2 rounded bg-primary/10 border border-primary/30">
+              <span className="font-medium text-primary">Easy:</span> 10 questions
             </div>
-            <div className="p-2 rounded bg-yellow-500/10 border border-yellow-500/30">
-              <span className="font-medium text-yellow-400">Medium:</span> 10 questions
+            <div className="p-2 rounded bg-accent/10 border border-accent/30">
+              <span className="font-medium text-accent">Medium:</span> 10 questions
             </div>
-            <div className="p-2 rounded bg-orange-500/10 border border-orange-500/30">
-              <span className="font-medium text-orange-400">Hard:</span> 10 questions
+            <div className="p-2 rounded bg-destructive/10 border border-destructive/30">
+              <span className="font-medium text-destructive">Hard:</span> 10 questions
             </div>
-            <div className="p-2 rounded bg-red-500/10 border border-red-500/30">
-              <span className="font-medium text-red-400">Beast:</span> 10 questions
+            <div className="p-2 rounded bg-destructive/20 border border-destructive/50">
+              <span className="font-medium text-destructive">Beast:</span> 10 questions
             </div>
           </div>
 
