@@ -58,6 +58,11 @@ export function CodeEditor({ question, competitionId, onSubmissionResult }: Code
     }
   };
 
+  // Normalize output by stripping all leading/trailing whitespace and newlines
+  const normalizeOutput = (str: string): string => {
+    return str.replace(/^[\s\n\r]+|[\s\n\r]+$/g, '');
+  };
+
   const executeCode = async () => {
     if (!user) return;
     setIsRunning(true);
@@ -75,7 +80,7 @@ export function CodeEditor({ question, competitionId, onSubmissionResult }: Code
       if (!response.ok) throw new Error('Execution failed');
       const data = await response.json();
       
-      const stdout = data.run?.stdout?.trim() || '';
+      const rawStdout = data.run?.stdout || '';
       const stderr = data.run?.stderr?.trim() || '';
       const compileError = data.compile?.stderr?.trim() || '';
 
@@ -86,10 +91,15 @@ export function CodeEditor({ question, competitionId, onSubmissionResult }: Code
         setOutput(`Runtime Error:\n${stderr}`);
         setResult('fail');
       } else {
-        const expected = question.expected_output.trim();
-        const passed = stdout === expected;
+        // Step A: Normalize the stdout from Piston
+        const normalizedStdout = normalizeOutput(rawStdout);
+        // Step B: Normalize the expected output
+        const normalizedExpected = normalizeOutput(question.expected_output);
+        // Step C: Compare cleaned strings
+        const passed = normalizedStdout === normalizedExpected;
+        
         setResult(passed ? 'pass' : 'fail');
-        setOutput(`Your Output:\n${stdout}\n\n${passed ? '✓ CORRECT!' : `✗ Expected:\n${expected}`}`);
+        setOutput(`Your Output:\n${normalizedStdout}\n\n${passed ? '✓ CORRECT!' : `✗ Expected:\n${normalizedExpected}`}`);
 
         const { error } = await db.from('submissions').insert({ user_id: user.id, competition_id: competitionId || null, question_id: question.id, language: language, code: code, auto_status: passed ? 'pass' : 'fail', manual_status: 'pending' });
         if (error) console.error('Error saving submission:', error);

@@ -10,40 +10,111 @@ interface LeaderboardEntry {
   user_id: string;
   username: string;
   solved_count: number;
-  total_time_ms: number;
+  earliest_solve_time: number;
+  status: 'active' | 'banned' | 'kicked';
 }
 
 interface LeaderboardProps {
   competitionId: string;
+  totalQuestions?: number;
 }
 
-export function Leaderboard({ competitionId }: LeaderboardProps) {
+export function Leaderboard({ competitionId, totalQuestions = 10 }: LeaderboardProps) {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     fetchLeaderboard();
-    subscribeToUpdates();
+    const cleanup = subscribeToUpdates();
+    return cleanup;
   }, [competitionId]);
 
   const fetchLeaderboard = async () => {
     try {
-      const { data: submissions } = await db.from('submissions').select(`user_id, question_id, auto_status, manual_status, submitted_at, profiles:user_id (username)`).eq('competition_id', competitionId);
-      if (!submissions) return;
+      // Fetch all submissions for this competition
+      const { data: submissions } = await db
+        .from('submissions')
+        .select(`user_id, question_id, auto_status, manual_status, submitted_at`)
+        .eq('competition_id', competitionId);
+      
+      // Fetch participants with their status and profile info
+      const { data: participants } = await db
+        .from('participants')
+        .select(`user_id, status, profiles:user_id (username)`)
+        .eq('competition_id', competitionId);
 
-      const userStats = new Map<string, LeaderboardEntry>();
-      for (const sub of submissions) {
-        const isPassed = sub.auto_status === 'pass' || sub.manual_status === 'overridden';
-        if (!isPassed) continue;
-        const userId = sub.user_id;
-        const username = (sub.profiles as any)?.username || 'Unknown';
-        if (!userStats.has(userId)) userStats.set(userId, { user_id: userId, username, solved_count: 0, total_time_ms: 0 });
-        const stats = userStats.get(userId)!;
-        stats.solved_count += 1;
-        stats.total_time_ms += new Date(sub.submitted_at).getTime();
+      if (!submissions || !participants) return;
+
+      // Create a map of participant info
+      const participantMap = new Map<string, { username: string; status: 'active' | 'banned' | 'kicked' }>();
+      for (const p of participants) {
+        participantMap.set(p.user_id, {
+          username: (p.profiles as any)?.username || 'Unknown',
+          status: p.status as 'active' | 'banned' | 'kicked',
+        });
       }
 
-      const sorted = Array.from(userStats.values()).sort((a, b) => b.solved_count !== a.solved_count ? b.solved_count - a.solved_count : a.total_time_ms - b.total_time_ms);
+      // Track unique solved questions per user with earliest solve time
+      const userStats = new Map<string, { solvedQuestions: Set<string>; earliestSolveTime: number }>();
+
+      for (const sub of submissions) {
+        // Check if this submission passed (either auto or manual override)
+        const isPassed = sub.auto_status === 'pass' || sub.manual_status === 'overridden';
+        if (!isPassed) continue;
+
+        const userId = sub.user_id;
+        const questionId = sub.question_id;
+        const submitTime = new Date(sub.submitted_at).getTime();
+
+        if (!userStats.has(userId)) {
+          userStats.set(userId, { solvedQuestions: new Set(), earliestSolveTime: Infinity });
+        }
+
+        const stats = userStats.get(userId)!;
+        
+        // Only count each question once (unique question_id)
+        if (!stats.solvedQuestions.has(questionId)) {
+          stats.solvedQuestions.add(questionId);
+          // Track the time when they reached their current score
+          stats.earliestSolveTime = Math.min(stats.earliestSolveTime, submitTime);
+        }
+      }
+
+      // Build leaderboard entries
+      const leaderboardEntries: LeaderboardEntry[] = [];
+      
+      for (const [userId, stats] of userStats) {
+        const participantInfo = participantMap.get(userId);
+        leaderboardEntries.push({
+          user_id: userId,
+          username: participantInfo?.username || 'Unknown',
+          solved_count: stats.solvedQuestions.size,
+          earliest_solve_time: stats.earliestSolveTime,
+          status: participantInfo?.status || 'active',
+        });
+      }
+
+      // Also include participants who haven't solved anything yet
+      for (const [userId, info] of participantMap) {
+        if (!userStats.has(userId)) {
+          leaderboardEntries.push({
+            user_id: userId,
+            username: info.username,
+            solved_count: 0,
+            earliest_solve_time: Infinity,
+            status: info.status,
+          });
+        }
+      }
+
+      // Sort: 1. Highest score (desc), 2. Earliest time to reach that score (asc)
+      const sorted = leaderboardEntries.sort((a, b) => {
+        if (b.solved_count !== a.solved_count) {
+          return b.solved_count - a.solved_count;
+        }
+        return a.earliest_solve_time - b.earliest_solve_time;
+      });
+
       setEntries(sorted);
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
@@ -53,7 +124,11 @@ export function Leaderboard({ competitionId }: LeaderboardProps) {
   };
 
   const subscribeToUpdates = () => {
-    const channel = supabase.channel('leaderboard-updates').on('postgres_changes', { event: '*', schema: 'public', table: 'submissions', filter: `competition_id=eq.${competitionId}` }, () => fetchLeaderboard()).subscribe();
+    const channel = supabase
+      .channel('leaderboard-updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions', filter: `competition_id=eq.${competitionId}` }, () => fetchLeaderboard())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'participants', filter: `competition_id=eq.${competitionId}` }, () => fetchLeaderboard())
+      .subscribe();
     return () => { supabase.removeChannel(channel); };
   };
 
@@ -66,24 +141,70 @@ export function Leaderboard({ competitionId }: LeaderboardProps) {
     }
   };
 
+  const getStatusBadge = (status: 'active' | 'banned' | 'kicked') => {
+    switch (status) {
+      case 'banned':
+        return <Badge variant="destructive" className="text-xs">Banned</Badge>;
+      case 'kicked':
+        return <Badge variant="outline" className="text-xs text-muted-foreground">Kicked</Badge>;
+      default:
+        return null;
+    }
+  };
+
   return (
     <>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm flex items-center gap-2"><Trophy className="h-4 w-4 text-warning" />Leaderboard</CardTitle>
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Trophy className="h-4 w-4 text-warning" />
+          Leaderboard
+        </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
         <ScrollArea className="h-[calc(100vh-16rem)]">
+          {/* Header row */}
+          <div className="px-3 py-2 border-b border-border">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+              <div className="w-8 text-center">#</div>
+              <div className="flex-1">Name</div>
+              <div className="w-16 text-center">Score</div>
+              <div className="w-16 text-center">Status</div>
+            </div>
+          </div>
+          
           <div className="p-3 space-y-1">
             {isLoading ? (
               <p className="text-center text-muted-foreground py-4 text-sm">Loading...</p>
             ) : entries.length === 0 ? (
-              <p className="text-center text-muted-foreground py-4 text-sm">No submissions yet</p>
+              <p className="text-center text-muted-foreground py-4 text-sm">No participants yet</p>
             ) : (
               entries.map((entry, index) => (
-                <div key={entry.user_id} className={`flex items-center gap-2 p-2 rounded-lg ${index === 0 ? 'bg-warning/10 border border-warning/30' : index === 1 ? 'bg-muted/30 border border-muted/50' : index === 2 ? 'bg-accent/10 border border-accent/30' : 'bg-secondary/30'}`}>
-                  <div className="w-6 flex justify-center">{getRankIcon(index + 1)}</div>
-                  <div className="flex-1 min-w-0"><p className="font-medium text-sm truncate">{entry.username}</p></div>
-                  <Badge variant="outline" className="shrink-0">{entry.solved_count} solved</Badge>
+                <div 
+                  key={entry.user_id} 
+                  className={`flex items-center gap-2 p-2 rounded-lg ${
+                    entry.status !== 'active' 
+                      ? 'bg-destructive/10 opacity-60' 
+                      : index === 0 
+                        ? 'bg-warning/10 border border-warning/30' 
+                        : index === 1 
+                          ? 'bg-muted/30 border border-muted/50' 
+                          : index === 2 
+                            ? 'bg-accent/10 border border-accent/30' 
+                            : 'bg-secondary/30'
+                  }`}
+                >
+                  <div className="w-8 flex justify-center">{getRankIcon(index + 1)}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{entry.username}</p>
+                  </div>
+                  <Badge variant="outline" className="w-16 justify-center shrink-0">
+                    {entry.solved_count}/{totalQuestions}
+                  </Badge>
+                  <div className="w-16 flex justify-center shrink-0">
+                    {getStatusBadge(entry.status) || (
+                      <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">Active</Badge>
+                    )}
+                  </div>
                 </div>
               ))
             )}
