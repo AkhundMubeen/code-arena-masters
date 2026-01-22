@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/lib/db';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +13,6 @@ export default function Dashboard() {
   const { profile, isAdmin } = useAuth();
   const [liveCompetitions, setLiveCompetitions] = useState<Competition[]>([]);
   const [upcomingCompetitions, setUpcomingCompetitions] = useState<Competition[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     fetchCompetitions();
@@ -21,33 +20,30 @@ export default function Dashboard() {
 
   const fetchCompetitions = async () => {
     try {
-      const { data: live } = await (supabase
-        .from('competitions' as any)
+      const { data: live } = await db
+        .from('competitions')
         .select('*')
         .eq('status', 'live')
         .order('start_time', { ascending: true })
-        .limit(3) as any);
+        .limit(3);
 
-      const { data: upcoming } = await (supabase
-        .from('competitions' as any)
+      const { data: upcoming } = await db
+        .from('competitions')
         .select('*')
         .eq('status', 'upcoming')
         .order('start_time', { ascending: true })
-        .limit(3) as any);
+        .limit(3);
 
       setLiveCompetitions((live as Competition[]) || []);
       setUpcomingCompetitions((upcoming as Competition[]) || []);
     } catch (error) {
       console.error('Error fetching competitions:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   return (
     <MainLayout>
       <div className="space-y-8 animate-fade-in">
-        {/* Welcome Section */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-display font-bold tracking-wide">
@@ -57,29 +53,19 @@ export default function Dashboard() {
           </div>
           <div className="flex gap-3">
             <Button asChild className="neon-glow-green">
-              <Link to="/practice">
-                <Code2 className="mr-2 h-4 w-4" />
-                Practice
-              </Link>
+              <Link to="/practice"><Code2 className="mr-2 h-4 w-4" />Practice</Link>
             </Button>
             <Button asChild variant="outline">
-              <Link to="/competitions">
-                <Trophy className="mr-2 h-4 w-4" />
-                Competitions
-              </Link>
+              <Link to="/competitions"><Trophy className="mr-2 h-4 w-4" />Competitions</Link>
             </Button>
             {isAdmin && (
               <Button asChild variant="outline" className="border-accent text-accent hover:bg-accent/10">
-                <Link to="/admin">
-                  <Shield className="mr-2 h-4 w-4" />
-                  Admin Panel
-                </Link>
+                <Link to="/admin"><Shield className="mr-2 h-4 w-4" />Admin Panel</Link>
               </Button>
             )}
           </div>
         </div>
 
-        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="glass-card">
             <CardContent className="pt-6">
@@ -92,7 +78,6 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
-
           <Card className="glass-card">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -104,7 +89,6 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
-
           <Card className="glass-card">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -116,7 +100,6 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
-
           <Card className="glass-card">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -130,7 +113,6 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Live Competitions */}
         {liveCompetitions.length > 0 && (
           <Card className="glass-card border-destructive/50">
             <CardHeader>
@@ -143,21 +125,13 @@ export default function Dashboard() {
             <CardContent>
               <div className="grid gap-4">
                 {liveCompetitions.map((comp) => (
-                  <div
-                    key={comp.id}
-                    className="flex items-center justify-between p-4 rounded-lg bg-destructive/10 border border-destructive/30"
-                  >
+                  <div key={comp.id} className="flex items-center justify-between p-4 rounded-lg bg-destructive/10 border border-destructive/30">
                     <div>
                       <h3 className="font-semibold">{comp.title}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {comp.duration_minutes} minutes • Started{' '}
-                        {new Date(comp.start_time).toLocaleTimeString()}
-                      </p>
+                      <p className="text-sm text-muted-foreground">{comp.duration_minutes} minutes • Started {new Date(comp.start_time).toLocaleTimeString()}</p>
                     </div>
                     <Button asChild size="sm" className="neon-glow-red bg-destructive hover:bg-destructive/90">
-                      <Link to={`/competition/${comp.id}`}>
-                        Join <ArrowRight className="ml-1 h-4 w-4" />
-                      </Link>
+                      <Link to={`/competition/${comp.id}`}>Join <ArrowRight className="ml-1 h-4 w-4" /></Link>
                     </Button>
                   </div>
                 ))}
@@ -166,43 +140,28 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {/* Upcoming Competitions */}
         <Card className="glass-card">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
-                  Upcoming Battles
-                </CardTitle>
+                <CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5" />Upcoming Battles</CardTitle>
                 <CardDescription>Prepare yourself for these competitions</CardDescription>
               </div>
               <Button asChild variant="ghost" size="sm">
-                <Link to="/competitions">
-                  View All <ArrowRight className="ml-1 h-4 w-4" />
-                </Link>
+                <Link to="/competitions">View All <ArrowRight className="ml-1 h-4 w-4" /></Link>
               </Button>
             </div>
           </CardHeader>
           <CardContent>
             {upcomingCompetitions.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                No upcoming competitions. Check back later!
-              </p>
+              <p className="text-center text-muted-foreground py-8">No upcoming competitions. Check back later!</p>
             ) : (
               <div className="grid gap-4">
                 {upcomingCompetitions.map((comp) => (
-                  <div
-                    key={comp.id}
-                    className="flex items-center justify-between p-4 rounded-lg bg-secondary/30 border border-border"
-                  >
+                  <div key={comp.id} className="flex items-center justify-between p-4 rounded-lg bg-secondary/30 border border-border">
                     <div>
                       <h3 className="font-semibold">{comp.title}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(comp.start_time).toLocaleDateString()} at{' '}
-                        {new Date(comp.start_time).toLocaleTimeString()} •{' '}
-                        {comp.duration_minutes} minutes
-                      </p>
+                      <p className="text-sm text-muted-foreground">{new Date(comp.start_time).toLocaleDateString()} at {new Date(comp.start_time).toLocaleTimeString()} • {comp.duration_minutes} minutes</p>
                     </div>
                     <Badge variant="outline">Upcoming</Badge>
                   </div>
@@ -212,42 +171,26 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Quick Practice */}
         <Card className="glass-card">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Code2 className="h-5 w-5" />
-              Practice Arena
-            </CardTitle>
+            <CardTitle className="flex items-center gap-2"><Code2 className="h-5 w-5" />Practice Arena</CardTitle>
             <CardDescription>Sharpen your skills with practice problems</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Link
-                to="/practice?difficulty=easy"
-                className="p-4 rounded-lg text-center difficulty-easy border transition-transform hover:scale-105"
-              >
+              <Link to="/practice?difficulty=easy" className="p-4 rounded-lg text-center difficulty-easy border transition-transform hover:scale-105">
                 <p className="font-bold text-lg">Easy</p>
                 <p className="text-sm opacity-70">Beginner</p>
               </Link>
-              <Link
-                to="/practice?difficulty=medium"
-                className="p-4 rounded-lg text-center difficulty-medium border transition-transform hover:scale-105"
-              >
+              <Link to="/practice?difficulty=medium" className="p-4 rounded-lg text-center difficulty-medium border transition-transform hover:scale-105">
                 <p className="font-bold text-lg">Medium</p>
                 <p className="text-sm opacity-70">Intermediate</p>
               </Link>
-              <Link
-                to="/practice?difficulty=hard"
-                className="p-4 rounded-lg text-center difficulty-hard border transition-transform hover:scale-105"
-              >
+              <Link to="/practice?difficulty=hard" className="p-4 rounded-lg text-center difficulty-hard border transition-transform hover:scale-105">
                 <p className="font-bold text-lg">Hard</p>
                 <p className="text-sm opacity-70">Advanced</p>
               </Link>
-              <Link
-                to="/practice?difficulty=beast"
-                className="p-4 rounded-lg text-center difficulty-beast border transition-transform hover:scale-105"
-              >
+              <Link to="/practice?difficulty=beast" className="p-4 rounded-lg text-center difficulty-beast border transition-transform hover:scale-105">
                 <p className="font-bold text-lg">Beast</p>
                 <p className="text-sm opacity-70">Expert</p>
               </Link>

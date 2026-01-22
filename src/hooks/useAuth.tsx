@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/lib/db';
 import { Profile, AppRole } from '@/lib/supabase-types';
 
 interface AuthContextType {
@@ -27,24 +28,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchProfile = async (userId: string) => {
     try {
-      // Using type assertions since the types file regenerates async
-      const { data: profileData, error: profileError } = await (supabase
-        .from('profiles' as any)
+      const { data: profileData, error: profileError } = await db
+        .from('profiles')
         .select('*')
         .eq('user_id', userId)
-        .single() as any);
+        .maybeSingle();
 
       if (profileError) throw profileError;
       setProfile(profileData as Profile);
 
-      const { data: roleData, error: roleError } = await (supabase
-        .from('user_roles' as any)
+      const { data: roleData, error: roleError } = await db
+        .from('user_roles')
         .select('role')
         .eq('user_id', userId)
-        .single() as any);
+        .maybeSingle();
 
-      if (roleError) throw roleError;
-      setRole(roleData?.role as AppRole);
+      if (!roleError && roleData) {
+        setRole(roleData.role as AppRole);
+      }
     } catch (error) {
       console.error('Error fetching profile:', error);
     }
@@ -57,14 +58,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
 
         if (currentSession?.user) {
-          // Use setTimeout to avoid potential deadlocks
           setTimeout(() => fetchProfile(currentSession.user.id), 0);
         } else {
           setProfile(null);
@@ -74,7 +73,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
@@ -94,10 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
         options: {
           emailRedirectTo: window.location.origin,
-          data: {
-            username,
-            department,
-          },
+          data: { username, department },
         },
       });
       return { error };
@@ -108,10 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       return { error };
     } catch (error) {
       return { error: error as Error };
