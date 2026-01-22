@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Play, Loader2, CheckCircle, XCircle, Terminal } from 'lucide-react';
+import { Play, Loader2, CheckCircle, XCircle, Terminal, FileText, Code2 } from 'lucide-react';
 import { Question, ProgrammingLanguage, DifficultyLevel } from '@/lib/supabase-types';
 
 interface CodeEditorProps {
@@ -33,6 +34,7 @@ export function CodeEditor({ question, competitionId, onSubmissionResult }: Code
   const [output, setOutput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<'pass' | 'fail' | null>(null);
+  const [activeTab, setActiveTab] = useState('code');
 
   const getDefaultCode = (lang: ProgrammingLanguage) => {
     switch (lang) {
@@ -58,7 +60,6 @@ export function CodeEditor({ question, competitionId, onSubmissionResult }: Code
     }
   };
 
-  // Normalize output by stripping all leading/trailing whitespace and newlines
   const normalizeOutput = (str: string): string => {
     return str.replace(/^[\s\n\r]+|[\s\n\r]+$/g, '');
   };
@@ -68,6 +69,7 @@ export function CodeEditor({ question, competitionId, onSubmissionResult }: Code
     setIsRunning(true);
     setOutput('Running code...');
     setResult(null);
+    setActiveTab('output');
 
     try {
       const config = LANGUAGE_CONFIG[language];
@@ -91,11 +93,8 @@ export function CodeEditor({ question, competitionId, onSubmissionResult }: Code
         setOutput(`Runtime Error:\n${stderr}`);
         setResult('fail');
       } else {
-        // Step A: Normalize the stdout from Piston
         const normalizedStdout = normalizeOutput(rawStdout);
-        // Step B: Normalize the expected output
         const normalizedExpected = normalizeOutput(question.expected_output);
-        // Step C: Compare cleaned strings
         const passed = normalizedStdout === normalizedExpected;
         
         setResult(passed ? 'pass' : 'fail');
@@ -116,43 +115,72 @@ export function CodeEditor({ question, competitionId, onSubmissionResult }: Code
   };
 
   return (
-    <div className="h-full flex flex-col lg:flex-row gap-4">
-      {/* Question Panel */}
-      <Card className="glass-card lg:w-1/3 shrink-0 max-h-[300px] lg:max-h-full">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>{question.title}</CardTitle>
+    <Card className="glass-card h-full flex flex-col overflow-hidden">
+      {/* Header */}
+      <CardHeader className="pb-3 shrink-0 border-b border-border/50">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <CardTitle className="text-lg">{question.title}</CardTitle>
             <Badge className={getDifficultyClass(question.difficulty)}>{question.difficulty.toUpperCase()}</Badge>
           </div>
-        </CardHeader>
-        <CardContent>
-          <ScrollArea className="h-[150px] lg:h-[calc(100%-2rem)] pr-4">
-            <div className="prose prose-invert prose-sm max-w-none">
-              <div className="whitespace-pre-wrap">{question.description}</div>
+          <div className="flex items-center gap-3">
+            <Select value={language} onValueChange={(val) => handleLanguageChange(val as ProgrammingLanguage)}>
+              <SelectTrigger className="w-28 h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="python">Python</SelectItem>
+                <SelectItem value="java">Java</SelectItem>
+                <SelectItem value="cpp">C++</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button onClick={executeCode} disabled={isRunning} size="sm" className={`neon-glow-green ${isRunning ? 'animate-pulse' : ''}`}>
+              {isRunning ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Running...</> : <><Play className="mr-2 h-4 w-4" />Run Code</>}
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+
+      {/* Tabbed Content */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+        <TabsList className="w-full justify-start rounded-none border-b border-border/50 bg-transparent h-auto p-0">
+          <TabsTrigger 
+            value="problem" 
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Problem
+          </TabsTrigger>
+          <TabsTrigger 
+            value="code" 
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
+          >
+            <Code2 className="h-4 w-4 mr-2" />
+            Code
+          </TabsTrigger>
+          <TabsTrigger 
+            value="output" 
+            className={`rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 ${result === 'pass' ? 'text-primary' : result === 'fail' ? 'text-destructive' : ''}`}
+          >
+            <Terminal className="h-4 w-4 mr-2" />
+            Output
+            {result === 'pass' && <CheckCircle className="h-4 w-4 ml-2 text-primary" />}
+            {result === 'fail' && <XCircle className="h-4 w-4 ml-2 text-destructive" />}
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Problem Tab */}
+        <TabsContent value="problem" className="flex-1 m-0 p-0 min-h-0">
+          <ScrollArea className="h-full">
+            <div className="p-6">
+              <div className="prose prose-invert prose-sm max-w-none">
+                <div className="whitespace-pre-wrap text-foreground/90 leading-relaxed">{question.description}</div>
+              </div>
             </div>
           </ScrollArea>
-        </CardContent>
-      </Card>
+        </TabsContent>
 
-      {/* Code Editor Panel */}
-      <div className="flex-1 flex flex-col gap-4 min-w-0 min-h-0">
-        <div className="flex items-center justify-between shrink-0">
-          <Select value={language} onValueChange={(val) => handleLanguageChange(val as ProgrammingLanguage)}>
-            <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="python">Python</SelectItem>
-              <SelectItem value="java">Java</SelectItem>
-              <SelectItem value="cpp">C++</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button onClick={executeCode} disabled={isRunning} className={`neon-glow-green ${isRunning ? 'animate-pulse' : ''}`}>
-            {isRunning ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Running...</> : <><Play className="mr-2 h-4 w-4" />Run Code</>}
-          </Button>
-        </div>
-
-        {/* Monaco Editor - ensure minimum height */}
-        <Card className="glass-card flex-1 min-h-[300px] overflow-hidden">
-          <CardContent className="p-0 h-full">
+        {/* Code Tab */}
+        <TabsContent value="code" className="flex-1 m-0 p-0 min-h-0">
+          <div className="h-full w-full">
             <Editor 
               height="100%" 
               language={language === 'cpp' ? 'cpp' : language} 
@@ -164,28 +192,24 @@ export function CodeEditor({ question, competitionId, onSubmissionResult }: Code
                 fontSize: 14, 
                 fontFamily: 'JetBrains Mono, Fira Code, monospace', 
                 padding: { top: 16 }, 
-                scrollBeyondLastLine: false 
+                scrollBeyondLastLine: false,
+                automaticLayout: true
               }} 
             />
-          </CardContent>
-        </Card>
+          </div>
+        </TabsContent>
 
-        {/* Output Panel */}
-        <Card className={`glass-card shrink-0 ${result === 'pass' ? 'border-primary neon-glow-green' : result === 'fail' ? 'border-destructive neon-glow-red' : ''}`}>
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Terminal className="h-4 w-4" />Output
-              {result === 'pass' && <CheckCircle className="h-4 w-4 text-primary ml-auto" />}
-              {result === 'fail' && <XCircle className="h-4 w-4 text-destructive ml-auto" />}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="py-2">
-            <ScrollArea className="h-32">
-              <pre className="text-sm font-mono whitespace-pre-wrap">{output || 'Click "Run Code" to execute your solution'}</pre>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+        {/* Output Tab */}
+        <TabsContent value="output" className={`flex-1 m-0 p-0 min-h-0 ${result === 'pass' ? 'bg-primary/5' : result === 'fail' ? 'bg-destructive/5' : ''}`}>
+          <ScrollArea className="h-full">
+            <div className="p-6">
+              <pre className="text-sm font-mono whitespace-pre-wrap text-foreground/90">
+                {output || 'Click "Run Code" to execute your solution and see the output here.'}
+              </pre>
+            </div>
+          </ScrollArea>
+        </TabsContent>
+      </Tabs>
+    </Card>
   );
 }
