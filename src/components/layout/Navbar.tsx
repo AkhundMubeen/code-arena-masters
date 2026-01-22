@@ -11,15 +11,20 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Terminal, Trophy, Code2, Shield, LogOut, User, Zap } from 'lucide-react';
 
 export function Navbar() {
-  const { user, profile, role, isAdmin, signOut } = useAuth();
+  const { user, profile, role, isAdmin, canBeAdmin, activeMode, setActiveMode, signOut } = useAuth();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
+  };
+
+  const handleModeToggle = (checked: boolean) => {
+    setActiveMode(checked ? 'admin' : 'student');
   };
 
   return (
@@ -64,6 +69,19 @@ export function Navbar() {
 
           {/* User Menu */}
           <div className="flex items-center gap-4">
+            {/* Admin Mode Toggle */}
+            {canBeAdmin && (
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/50 border border-border">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <Switch
+                  checked={activeMode === 'admin'}
+                  onCheckedChange={handleModeToggle}
+                  className="data-[state=checked]:bg-accent"
+                />
+                <Shield className="h-4 w-4 text-accent" />
+              </div>
+            )}
+
             {profile && (
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/50 border border-border">
                 <Zap className="h-4 w-4 text-warning" />
@@ -86,15 +104,40 @@ export function Navbar() {
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium">{profile?.username}</p>
                     <p className="text-xs text-muted-foreground">{user?.email}</p>
-                    <Badge
-                      variant="outline"
-                      className={isAdmin ? 'difficulty-beast w-fit mt-1' : 'difficulty-easy w-fit mt-1'}
-                    >
-                      {role?.toUpperCase()}
-                    </Badge>
+                    <div className="flex gap-2 mt-1">
+                      <Badge
+                        variant="outline"
+                        className={role === 'admin' ? 'difficulty-beast w-fit' : 'difficulty-easy w-fit'}
+                      >
+                        {role?.toUpperCase()}
+                      </Badge>
+                      {canBeAdmin && (
+                        <Badge
+                          variant="outline"
+                          className={activeMode === 'admin' ? 'bg-accent/20 text-accent border-accent/30 w-fit' : 'bg-muted text-muted-foreground w-fit'}
+                        >
+                          {activeMode === 'admin' ? 'Admin Mode' : 'Student Mode'}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                
+                {/* Mobile Mode Toggle */}
+                {canBeAdmin && (
+                  <>
+                    <DropdownMenuItem 
+                      onClick={() => setActiveMode(activeMode === 'admin' ? 'student' : 'admin')}
+                      className="cursor-pointer sm:hidden"
+                    >
+                      <Shield className="mr-2 h-4 w-4" />
+                      Switch to {activeMode === 'admin' ? 'Student' : 'Admin'} Mode
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="sm:hidden" />
+                  </>
+                )}
+                
                 <DropdownMenuItem asChild>
                   <Link to="/profile" className="cursor-pointer">
                     <User className="mr-2 h-4 w-4" />
