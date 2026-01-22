@@ -117,7 +117,8 @@ export function CodeEditor({ question, competitionId, onSubmissionResult }: Code
 
   return (
     <div className="h-full flex flex-col lg:flex-row gap-4">
-      <Card className="glass-card lg:w-1/3 shrink-0">
+      {/* Question Panel */}
+      <Card className="glass-card lg:w-1/3 shrink-0 max-h-[300px] lg:max-h-full">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>{question.title}</CardTitle>
@@ -125,7 +126,7 @@ export function CodeEditor({ question, competitionId, onSubmissionResult }: Code
           </div>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="h-[calc(100%-2rem)] pr-4">
+          <ScrollArea className="h-[150px] lg:h-[calc(100%-2rem)] pr-4">
             <div className="prose prose-invert prose-sm max-w-none">
               <div className="whitespace-pre-wrap">{question.description}</div>
             </div>
@@ -133,8 +134,9 @@ export function CodeEditor({ question, competitionId, onSubmissionResult }: Code
         </CardContent>
       </Card>
 
-      <div className="flex-1 flex flex-col gap-4 min-w-0">
-        <div className="flex items-center justify-between">
+      {/* Code Editor Panel */}
+      <div className="flex-1 flex flex-col gap-4 min-w-0 min-h-0">
+        <div className="flex items-center justify-between shrink-0">
           <Select value={language} onValueChange={(val) => handleLanguageChange(val as ProgrammingLanguage)}>
             <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -148,11 +150,28 @@ export function CodeEditor({ question, competitionId, onSubmissionResult }: Code
           </Button>
         </div>
 
-        <Card className="glass-card flex-1 overflow-hidden">
-          <Editor height="100%" language={language === 'cpp' ? 'cpp' : language} value={code} onChange={(value) => setCode(value || '')} theme="vs-dark" options={{ minimap: { enabled: false }, fontSize: 14, fontFamily: 'JetBrains Mono, Fira Code, monospace', padding: { top: 16 }, scrollBeyondLastLine: false }} />
+        {/* Monaco Editor - ensure minimum height */}
+        <Card className="glass-card flex-1 min-h-[300px] overflow-hidden">
+          <CardContent className="p-0 h-full">
+            <Editor 
+              height="100%" 
+              language={language === 'cpp' ? 'cpp' : language} 
+              value={code} 
+              onChange={(value) => setCode(value || '')} 
+              theme="vs-dark" 
+              options={{ 
+                minimap: { enabled: false }, 
+                fontSize: 14, 
+                fontFamily: 'JetBrains Mono, Fira Code, monospace', 
+                padding: { top: 16 }, 
+                scrollBeyondLastLine: false 
+              }} 
+            />
+          </CardContent>
         </Card>
 
-        <Card className={`glass-card ${result === 'pass' ? 'border-primary neon-glow-green' : result === 'fail' ? 'border-destructive neon-glow-red' : ''}`}>
+        {/* Output Panel */}
+        <Card className={`glass-card shrink-0 ${result === 'pass' ? 'border-primary neon-glow-green' : result === 'fail' ? 'border-destructive neon-glow-red' : ''}`}>
           <CardHeader className="py-3">
             <CardTitle className="text-sm flex items-center gap-2">
               <Terminal className="h-4 w-4" />Output
