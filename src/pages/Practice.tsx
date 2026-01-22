@@ -2,25 +2,24 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { CodeEditor } from '@/components/arena/CodeEditor';
+import { SeedDatabase } from '@/components/admin/SeedDatabase';
 import { db } from '@/lib/db';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Check, Code2 } from 'lucide-react';
 import { Question, DifficultyLevel } from '@/lib/supabase-types';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function Practice() {
   const [searchParams] = useSearchParams();
   const difficultyFilter = searchParams.get('difficulty') as DifficultyLevel | null;
+  const { role } = useAuth();
   
   const [questions, setQuestions] = useState<Question[]>([]);
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
   const [solvedQuestions, setSolvedQuestions] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    fetchQuestions();
-  }, [difficultyFilter]);
 
   const fetchQuestions = async () => {
     try {
@@ -47,6 +46,10 @@ export default function Practice() {
     }
   };
 
+  useEffect(() => {
+    fetchQuestions();
+  }, [difficultyFilter]);
+
   const getDifficultyClass = (difficulty: DifficultyLevel) => {
     switch (difficulty) {
       case 'easy': return 'difficulty-easy';
@@ -63,6 +66,10 @@ export default function Practice() {
     }
   };
 
+  const handleSeeded = () => {
+    fetchQuestions();
+  };
+
   return (
     <MainLayout>
       <div className="h-[calc(100vh-8rem)] flex gap-4">
@@ -77,7 +84,12 @@ export default function Practice() {
                 {isLoading ? (
                   <p className="text-center text-muted-foreground py-8">Loading...</p>
                 ) : questions.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">No practice problems yet</p>
+                  <div className="space-y-4">
+                    <p className="text-center text-muted-foreground py-4">No practice problems yet</p>
+                    {role === 'admin' && (
+                      <SeedDatabase compact onSeeded={handleSeeded} />
+                    )}
+                  </div>
                 ) : (
                   questions.map((q) => (
                     <button
