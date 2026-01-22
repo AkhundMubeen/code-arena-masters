@@ -16,6 +16,7 @@ interface CodeEditorProps {
   question: Question;
   competitionId?: string;
   onSubmissionResult?: (passed: boolean) => void;
+  onClose?: () => void;
 }
 
 const PISTON_API = 'https://emkc.org/api/v2/piston/execute';
@@ -25,7 +26,7 @@ const LANGUAGE_CONFIG: Record<ProgrammingLanguage, { version: string; pistonLang
   cpp: { version: '10.2.0', pistonLang: 'cpp' },
 };
 
-export function CodeEditor({ question, competitionId, onSubmissionResult }: CodeEditorProps) {
+export function CodeEditor({ question, competitionId, onSubmissionResult, onClose }: CodeEditorProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -115,29 +116,27 @@ export function CodeEditor({ question, competitionId, onSubmissionResult }: Code
   };
 
   return (
-    <Card className="glass-card h-full flex flex-col overflow-hidden">
+    <div className="h-full flex flex-col overflow-hidden bg-background">
       {/* Header */}
-      <CardHeader className="pb-3 shrink-0 border-b border-border/50">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <CardTitle className="text-lg">{question.title}</CardTitle>
-            <Badge className={getDifficultyClass(question.difficulty)}>{question.difficulty.toUpperCase()}</Badge>
-          </div>
-          <div className="flex items-center gap-3">
-            <Select value={language} onValueChange={(val) => handleLanguageChange(val as ProgrammingLanguage)}>
-              <SelectTrigger className="w-28 h-9"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="python">Python</SelectItem>
-                <SelectItem value="java">Java</SelectItem>
-                <SelectItem value="cpp">C++</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button onClick={executeCode} disabled={isRunning} size="sm" className={`neon-glow-green ${isRunning ? 'animate-pulse' : ''}`}>
-              {isRunning ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Running...</> : <><Play className="mr-2 h-4 w-4" />Run Code</>}
-            </Button>
-          </div>
+      <div className="px-6 py-4 shrink-0 border-b border-border/50 flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-bold">{question.title}</h2>
+          <Badge className={getDifficultyClass(question.difficulty)}>{question.difficulty.toUpperCase()}</Badge>
         </div>
-      </CardHeader>
+        <div className="flex items-center gap-3">
+          <Select value={language} onValueChange={(val) => handleLanguageChange(val as ProgrammingLanguage)}>
+            <SelectTrigger className="w-28 h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="python">Python</SelectItem>
+              <SelectItem value="java">Java</SelectItem>
+              <SelectItem value="cpp">C++</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={executeCode} disabled={isRunning} size="sm" className={`neon-glow-green ${isRunning ? 'animate-pulse' : ''}`}>
+            {isRunning ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Running...</> : <><Play className="mr-2 h-4 w-4" />Run Code</>}
+          </Button>
+        </div>
+      </div>
 
       {/* Tabbed Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
@@ -210,6 +209,6 @@ export function CodeEditor({ question, competitionId, onSubmissionResult }: Code
           </ScrollArea>
         </TabsContent>
       </Tabs>
-    </Card>
+    </div>
   );
 }
