@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { db } from '@/lib/db';
 import { Profile, AppRole } from '@/lib/supabase-types';
 
+type ActiveMode = 'admin' | 'student';
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -11,6 +13,9 @@ interface AuthContextType {
   role: AppRole | null;
   isLoading: boolean;
   isAdmin: boolean;
+  activeMode: ActiveMode;
+  canBeAdmin: boolean;
+  setActiveMode: (mode: ActiveMode) => void;
   signUp: (email: string, password: string, username: string, department?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -25,6 +30,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeMode, setActiveMode] = useState<ActiveMode>('student');
+
+  // When role changes, update active mode accordingly
+  useEffect(() => {
+    if (role === 'admin') {
+      setActiveMode('admin');
+    } else {
+      setActiveMode('student');
+    }
+  }, [role]);
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -118,6 +133,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRole(null);
   };
 
+  const canBeAdmin = role === 'admin';
+  const isAdmin = canBeAdmin && activeMode === 'admin';
+
   return (
     <AuthContext.Provider
       value={{
@@ -126,7 +144,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         role,
         isLoading,
-        isAdmin: role === 'admin',
+        isAdmin,
+        activeMode,
+        canBeAdmin,
+        setActiveMode,
         signUp,
         signIn,
         signOut,
