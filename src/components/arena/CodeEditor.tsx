@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Play, Loader2, CheckCircle, XCircle, Terminal, FileText, Code2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { Question, ProgrammingLanguage, DifficultyLevel } from '@/lib/supabase-types';
 
 interface CodeEditorProps {
@@ -31,7 +32,7 @@ export function CodeEditor({ question, competitionId, onSubmissionResult, onClos
   const { toast } = useToast();
   
   const [language, setLanguage] = useState<ProgrammingLanguage>('python');
-  const [code, setCode] = useState(question.default_code_python);
+  const [code, setCode] = useState(question.default_code_python || '');
   const [output, setOutput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<'pass' | 'fail' | null>(null);
@@ -39,9 +40,9 @@ export function CodeEditor({ question, competitionId, onSubmissionResult, onClos
 
   const getDefaultCode = (lang: ProgrammingLanguage) => {
     switch (lang) {
-      case 'python': return question.default_code_python;
-      case 'java': return question.default_code_java;
-      case 'cpp': return question.default_code_cpp;
+      case 'python': return question.default_code_python || '';
+      case 'java': return question.default_code_java || '';
+      case 'cpp': return question.default_code_cpp || '';
     }
   };
 
@@ -170,8 +171,8 @@ export function CodeEditor({ question, competitionId, onSubmissionResult, onClos
         <TabsContent value="problem" className="flex-1 m-0 p-0 min-h-0">
           <ScrollArea className="h-full">
             <div className="p-6">
-              <div className="prose prose-invert prose-sm max-w-none">
-                <div className="whitespace-pre-wrap text-foreground/90 leading-relaxed">{question.description}</div>
+              <div className="prose prose-invert prose-sm max-w-none prose-headings:text-foreground prose-strong:text-foreground prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-primary prose-code:before:content-none prose-code:after:content-none prose-pre:bg-muted prose-pre:border prose-pre:border-border">
+                <ReactMarkdown>{question.description}</ReactMarkdown>
               </div>
             </div>
           </ScrollArea>
