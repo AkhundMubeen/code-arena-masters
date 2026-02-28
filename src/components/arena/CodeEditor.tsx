@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Play, Loader2, CheckCircle, XCircle, Terminal, FileText, Code2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { supabase } from '@/integrations/supabase/client';
+
 import { Question, ProgrammingLanguage, DifficultyLevel } from '@/lib/supabase-types';
 
 interface CodeEditorProps {
@@ -74,16 +74,26 @@ export function CodeEditor({ question, competitionId, onSubmissionResult, onClos
     setActiveTab('output');
 
     try {
-      const config = LANGUAGE_CONFIG[language];
-      const { data, error: fnError } = await supabase.functions.invoke('execute-code', {
-        body: { language: config.pistonLang, version: config.version, files: [{ content: code }], stdin: question.hidden_input },
+      const langId = language === 'python' ? 71 : language === 'java' ? 62 : 54;
+
+      const response = await fetch("https://codearena-advanced-code-compiler.p.rapidapi.com/submissions?base64_encoded=false&wait=true", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-rapidapi-host": "codearena-advanced-code-compiler.p.rapidapi.com",
+          "x-rapidapi-key": "5c9a36773fmshbc7bb16c4105494p14b958jsn1054869eb5af"
+        },
+        body: JSON.stringify({
+          source_code: code,
+          language_id: langId,
+          stdin: question.hidden_input || ""
+        })
       });
 
-      if (fnError) throw new Error('Execution failed');
-      const result_data = data;
-      const rawStdout = result_data.run?.stdout || '';
-      const stderr = result_data.run?.stderr?.trim() || '';
-      const compileError = result_data.compile?.stderr?.trim() || '';
+      const data = await response.json();
+      const compileError = (data.compile_output || '').trim();
+      const stderr = (data.stderr || '').trim();
+      const rawStdout = data.stdout || '';
 
       if (compileError) {
         setOutput(`Compilation Error:\n${compileError}`);
@@ -95,7 +105,7 @@ export function CodeEditor({ question, competitionId, onSubmissionResult, onClos
         const normalizedStdout = normalizeOutput(rawStdout);
         const normalizedExpected = normalizeOutput(question.expected_output);
         const passed = normalizedStdout === normalizedExpected;
-        
+
         setResult(passed ? 'pass' : 'fail');
         setOutput(`Your Output:\n${normalizedStdout}\n\n${passed ? '✓ CORRECT!' : `✗ Expected:\n${normalizedExpected}`}`);
 
