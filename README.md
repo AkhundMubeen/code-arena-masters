@@ -1,4 +1,4 @@
-# Hi, Welcome to your Lovable project
+# Hi, Welcome to the project
 
 ## What technologies are used for this project?
 
