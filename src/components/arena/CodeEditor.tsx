@@ -91,6 +91,14 @@ export function CodeEditor({ question, competitionId, onSubmissionResult, onClos
       });
 
       const data = await response.json();
+      
+      if (!response.ok) {
+        setOutput(`API Error (${response.status}): ${data.message || data.error || JSON.stringify(data)}\n\nMake sure you're subscribed to Judge0 CE on RapidAPI.`);
+        setResult('fail');
+        setIsRunning(false);
+        return;
+      }
+
       const compileError = (data.compile_output || '').trim();
       const stderr = (data.stderr || '').trim();
       const rawStdout = data.stdout || '';
