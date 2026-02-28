@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Play, Loader2, CheckCircle, XCircle, Terminal, FileText, Code2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { supabase } from '@/integrations/supabase/client';
 import { Question, ProgrammingLanguage, DifficultyLevel } from '@/lib/supabase-types';
 
 interface CodeEditorProps {
@@ -20,7 +21,6 @@ interface CodeEditorProps {
   onClose?: () => void;
 }
 
-const PISTON_API = 'https://emkc.org/api/v2/piston/execute';
 const LANGUAGE_CONFIG: Record<ProgrammingLanguage, { version: string; pistonLang: string }> = {
   python: { version: '3.10.0', pistonLang: 'python' },
   java: { version: '15.0.2', pistonLang: 'java' },
@@ -75,18 +75,15 @@ export function CodeEditor({ question, competitionId, onSubmissionResult, onClos
 
     try {
       const config = LANGUAGE_CONFIG[language];
-      const response = await fetch(PISTON_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ language: config.pistonLang, version: config.version, files: [{ content: code }], stdin: question.hidden_input }),
+      const { data, error: fnError } = await supabase.functions.invoke('execute-code', {
+        body: { language: config.pistonLang, version: config.version, files: [{ content: code }], stdin: question.hidden_input },
       });
 
-      if (!response.ok) throw new Error('Execution failed');
-      const data = await response.json();
-      
-      const rawStdout = data.run?.stdout || '';
-      const stderr = data.run?.stderr?.trim() || '';
-      const compileError = data.compile?.stderr?.trim() || '';
+      if (fnError) throw new Error('Execution failed');
+      const result_data = data;
+      const rawStdout = result_data.run?.stdout || '';
+      const stderr = result_data.run?.stderr?.trim() || '';
+      const compileError = result_data.compile?.stderr?.trim() || '';
 
       if (compileError) {
         setOutput(`Compilation Error:\n${compileError}`);
