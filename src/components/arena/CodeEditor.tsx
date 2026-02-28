@@ -76,11 +76,11 @@ export function CodeEditor({ question, competitionId, onSubmissionResult, onClos
     try {
       const langId = language === 'python' ? 71 : language === 'java' ? 62 : 54;
 
-      const response = await fetch("https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=true&fields=stdout,stderr,compile_output,status", {
+      const response = await fetch("https://judge029.p.rapidapi.com/submissions?base64_encoded=false&wait=true", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-rapidapi-host": "judge0-ce.p.rapidapi.com",
+          "x-rapidapi-host": "judge029.p.rapidapi.com",
           "x-rapidapi-key": "5c9a36773fmshbc7bb16c4105494p14b958jsn1054869eb5af"
         },
         body: JSON.stringify({
