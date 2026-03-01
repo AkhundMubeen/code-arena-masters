@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Loader2, Trash2 } from 'lucide-react';
@@ -26,6 +27,9 @@ export function QuestionBank() {
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('easy');
   const [hiddenInput, setHiddenInput] = useState('');
   const [expectedOutput, setExpectedOutput] = useState('');
+  const [codePython, setCodePython] = useState('# Write your Python code here\n');
+  const [codeJava, setCodeJava] = useState('// Write your Java code here\npublic class Main {\n    public static void main(String[] args) {\n        \n    }\n}');
+  const [codeCpp, setCodeCpp] = useState('// Write your C++ code here\n#include <iostream>\nusing namespace std;\n\nint main() {\n    \n    return 0;\n}');
 
   useEffect(() => { fetchQuestions(); }, []);
 
@@ -45,10 +49,10 @@ export function QuestionBank() {
     if (!title.trim() || !description.trim() || !expectedOutput.trim()) { toast({ title: 'Missing Fields', description: 'Please fill in all required fields', variant: 'destructive' }); return; }
     setIsCreating(true);
     try {
-      const { error } = await db.from('questions').insert({ title: title.trim(), description: description.trim(), difficulty, hidden_input: hiddenInput, expected_output: expectedOutput.trim(), competition_id: null });
+      const { error } = await db.from('questions').insert({ title: title.trim(), description: description.trim(), difficulty, hidden_input: hiddenInput, expected_output: expectedOutput.trim(), competition_id: null, default_code_python: codePython, default_code_java: codeJava, default_code_cpp: codeCpp });
       if (error) throw error;
       toast({ title: 'Question Created!', description: 'Added to the practice question bank' });
-      setTitle(''); setDescription(''); setDifficulty('easy'); setHiddenInput(''); setExpectedOutput(''); setDialogOpen(false);
+      setTitle(''); setDescription(''); setDifficulty('easy'); setHiddenInput(''); setExpectedOutput(''); setCodePython('# Write your Python code here\n'); setCodeJava('// Write your Java code here\npublic class Main {\n    public static void main(String[] args) {\n        \n    }\n}'); setCodeCpp('// Write your C++ code here\n#include <iostream>\nusing namespace std;\n\nint main() {\n    \n    return 0;\n}'); setDialogOpen(false);
       fetchQuestions();
     } catch (error) {
       console.error('Error creating question:', error);
@@ -86,7 +90,7 @@ export function QuestionBank() {
           <div><CardTitle>Practice Question Bank</CardTitle><CardDescription>Manage practice problems available to all users</CardDescription></div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild><Button className="neon-glow-green"><PlusCircle className="mr-2 h-4 w-4" />Add Question</Button></DialogTrigger>
-            <DialogContent className="glass-card max-w-2xl">
+            <DialogContent className="glass-card max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>Add Practice Question</DialogTitle><DialogDescription>Create a new question for the practice arena</DialogDescription></DialogHeader>
               <div className="space-y-4 pt-4">
                 <div className="grid gap-4 md:grid-cols-2">
@@ -102,6 +106,25 @@ export function QuestionBank() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2"><Label>Hidden Input (stdin)</Label><Textarea placeholder="Test input..." value={hiddenInput} onChange={(e) => setHiddenInput(e.target.value)} rows={3} className="font-mono text-sm" /></div>
                   <div className="space-y-2"><Label>Expected Output</Label><Textarea placeholder="Expected output..." value={expectedOutput} onChange={(e) => setExpectedOutput(e.target.value)} rows={3} className="font-mono text-sm" /></div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Boilerplate / Starter Code</Label>
+                  <Tabs defaultValue="python" className="w-full">
+                    <TabsList className="w-full">
+                      <TabsTrigger value="python" className="flex-1">Python</TabsTrigger>
+                      <TabsTrigger value="java" className="flex-1">Java</TabsTrigger>
+                      <TabsTrigger value="cpp" className="flex-1">C++</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="python">
+                      <Textarea placeholder="# Python starter code..." value={codePython} onChange={(e) => setCodePython(e.target.value)} rows={6} className="font-mono text-sm" />
+                    </TabsContent>
+                    <TabsContent value="java">
+                      <Textarea placeholder="// Java starter code..." value={codeJava} onChange={(e) => setCodeJava(e.target.value)} rows={6} className="font-mono text-sm" />
+                    </TabsContent>
+                    <TabsContent value="cpp">
+                      <Textarea placeholder="// C++ starter code..." value={codeCpp} onChange={(e) => setCodeCpp(e.target.value)} rows={6} className="font-mono text-sm" />
+                    </TabsContent>
+                  </Tabs>
                 </div>
                 <Button onClick={handleCreate} disabled={isCreating} className="w-full neon-glow-green">
                   {isCreating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</> : 'Create Question'}
