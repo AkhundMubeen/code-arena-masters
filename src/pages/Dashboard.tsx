@@ -10,13 +10,42 @@ import { Code2, Trophy, Zap, Target, Clock, Users, ArrowRight, Shield } from 'lu
 import { Competition } from '@/lib/supabase-types';
 
 export default function Dashboard() {
-  const { profile, isAdmin } = useAuth();
+  const { user, profile, isAdmin } = useAuth();
   const [liveCompetitions, setLiveCompetitions] = useState<Competition[]>([]);
   const [upcomingCompetitions, setUpcomingCompetitions] = useState<Competition[]>([]);
+  const [problemsSolved, setProblemsSolved] = useState(0);
+  const [competitionsJoined, setCompetitionsJoined] = useState(0);
 
   useEffect(() => {
     fetchCompetitions();
-  }, []);
+    if (user) fetchStats();
+  }, [user]);
+
+  const fetchStats = async () => {
+    try {
+      // Count distinct questions solved (passed)
+      const { data: solvedData } = await db
+        .from('submissions')
+        .select('question_id')
+        .eq('user_id', user!.id)
+        .eq('auto_status', 'pass');
+      
+      if (solvedData) {
+        const uniqueQuestions = new Set(solvedData.map((s: any) => s.question_id));
+        setProblemsSolved(uniqueQuestions.size);
+      }
+
+      // Count competitions participated
+      const { count } = await db
+        .from('participants')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user!.id);
+      
+      setCompetitionsJoined(count || 0);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
 
   const fetchCompetitions = async () => {
     try {
@@ -83,7 +112,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Problems Solved</p>
-                  <p className="text-2xl font-bold text-primary">0</p>
+                  <p className="text-2xl font-bold text-primary">{problemsSolved}</p>
                 </div>
                 <Target className="h-8 w-8 text-primary" />
               </div>
@@ -94,7 +123,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Competitions</p>
-                  <p className="text-2xl font-bold text-accent">0</p>
+                  <p className="text-2xl font-bold text-accent">{competitionsJoined}</p>
                 </div>
                 <Trophy className="h-8 w-8 text-accent" />
               </div>
