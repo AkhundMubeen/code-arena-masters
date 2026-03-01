@@ -28,7 +28,7 @@ const LANGUAGE_CONFIG: Record<ProgrammingLanguage, { version: string; pistonLang
 };
 
 export function CodeEditor({ question, competitionId, onSubmissionResult, onClose }: CodeEditorProps) {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const { toast } = useToast();
   
   const [language, setLanguage] = useState<ProgrammingLanguage>('python');
@@ -119,7 +119,7 @@ export function CodeEditor({ question, competitionId, onSubmissionResult, onClos
 
         const { error } = await db.from('submissions').insert({ user_id: user.id, competition_id: competitionId || null, question_id: question.id, language: language, code: code, auto_status: passed ? 'pass' : 'fail', manual_status: 'pending' });
         if (error) console.error('Error saving submission:', error);
-        else { onSubmissionResult?.(passed); if (passed) toast({ title: 'Correct!', description: 'Your solution passed all test cases' }); }
+        else { onSubmissionResult?.(passed); if (passed) { toast({ title: 'Correct!', description: 'Your solution passed all test cases' }); await refreshProfile(); } }
       }
     } catch (error) {
       console.error('Execution error:', error);
