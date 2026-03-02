@@ -105,7 +105,7 @@ export function AuthPage() {
             <div className="flex items-center justify-center lg:justify-start gap-3">
               <Terminal className="h-12 w-12 text-primary neon-text-green" />
               <h1 className="font-display text-4xl md:text-5xl font-bold tracking-wider">
-                <span className="text-primary neon-text-green">MUET</span>
+                <span className="text-primary neon-text-green">UNI</span>
                 <span className="text-foreground"> CODE-ARENA</span>
               </h1>
             </div>
@@ -168,7 +168,7 @@ export function AuthPage() {
                       <Input
                         id="login-email"
                         type="email"
-                        placeholder="warrior@muet.edu.pk"
+                        placeholder="warrior@uni.edu.pk"
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
                         required
@@ -216,7 +216,7 @@ export function AuthPage() {
                       <Input
                         id="signup-email"
                         type="email"
-                        placeholder="warrior@muet.edu.pk"
+                        placeholder="warrior@uni.edu.pk"
                         value={signupEmail}
                         onChange={(e) => setSignupEmail(e.target.value)}
                         required
