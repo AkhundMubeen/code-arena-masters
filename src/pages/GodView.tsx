@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { db } from '@/lib/db';
 import { supabase } from '@/integrations/supabase/client';
+import { useCompetitionTimer } from '@/hooks/useCompetitionTimer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,8 @@ export default function GodView() {
   const [selectedSubmission, setSelectedSubmission] = useState<SubmissionWithDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isOverriding, setIsOverriding] = useState(false);
+
+  const timer = useCompetitionTimer(competition?.start_time, competition?.duration_minutes);
 
   useEffect(() => {
     if (id) { fetchData(); subscribeToSubmissions(); }
@@ -89,7 +92,18 @@ export default function GodView() {
               <p className="text-muted-foreground">{competition?.title}</p>
             </div>
           </div>
-          <Button onClick={fetchSubmissions} variant="outline" size="sm"><RefreshCw className="h-4 w-4 mr-2" />Refresh</Button>
+          <div className="flex items-center gap-3">
+            <Card className={`glass-card ${timer.isUrgent ? 'border-destructive neon-glow-red' : timer.isExpired ? 'border-muted' : ''}`}>
+              <CardContent className="py-2 px-4 flex items-center gap-2">
+                <Clock className={`h-4 w-4 ${timer.isUrgent ? 'text-destructive animate-pulse' : timer.isExpired ? 'text-muted-foreground' : 'text-primary'}`} />
+                <span className={`font-mono text-lg font-bold ${timer.isUrgent ? 'text-destructive' : timer.isExpired ? 'text-muted-foreground' : ''}`}>
+                  {timer.formatted}
+                </span>
+                {timer.isExpired && <Badge variant="destructive" className="text-xs">Ended</Badge>}
+              </CardContent>
+            </Card>
+            <Button onClick={fetchSubmissions} variant="outline" size="sm"><RefreshCw className="h-4 w-4 mr-2" />Refresh</Button>
+          </div>
         </div>
 
         <Card className="glass-card">

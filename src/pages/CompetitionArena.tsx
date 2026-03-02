@@ -1,44 +1,67 @@
-import { useEffect, useState } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useEffect, useState, useCallback } from 'react';
+import { useParams, Navigate, useNavigate, useBlocker } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { CodeEditor } from '@/components/arena/CodeEditor';
 import { Leaderboard } from '@/components/arena/Leaderboard';
 import { db } from '@/lib/db';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useCompetitionTimer } from '@/hooks/useCompetitionTimer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Check, Clock, Loader2, Trophy, AlertTriangle } from 'lucide-react';
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import { Check, Clock, Loader2, Trophy, AlertTriangle, LogOut } from 'lucide-react';
 import { Question, Competition, DifficultyLevel, Participant } from '@/lib/supabase-types';
 
 export default function CompetitionArena() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
-  
+  const navigate = useNavigate();
+
   const [competition, setCompetition] = useState<Competition | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
   const [solvedQuestions, setSolvedQuestions] = useState<Set<string>>(new Set());
   const [participant, setParticipant] = useState<Participant | null>(null);
-  const [timeLeft, setTimeLeft] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isKicked, setIsKicked] = useState(false);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [pendingNavPath, setPendingNavPath] = useState<string | null>(null);
+
+  const timer = useCompetitionTimer(competition?.start_time, competition?.duration_minutes);
+
+  // Block navigation while competition is active
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      !timer.isExpired && !!participant && !isKicked && currentLocation.pathname !== nextLocation.pathname
+  );
+
+  // When blocker triggers, show leave dialog
+  useEffect(() => {
+    if (blocker.state === 'blocked') {
+      setPendingNavPath(blocker.location.pathname);
+      setShowLeaveDialog(true);
+    }
+  }, [blocker.state]);
+
+  // Block browser tab close / refresh
+  useEffect(() => {
+    if (timer.isExpired || !participant || isKicked) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [timer.isExpired, participant, isKicked]);
 
   useEffect(() => {
     if (id && user) fetchCompetitionData();
   }, [id, user]);
-
-  useEffect(() => {
-    if (!competition) return;
-    const endTime = new Date(competition.start_time).getTime() + competition.duration_minutes * 60 * 1000;
-    const interval = setInterval(() => {
-      const remaining = Math.max(0, endTime - Date.now());
-      setTimeLeft(remaining);
-      if (remaining === 0) clearInterval(interval);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [competition]);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -53,7 +76,7 @@ export default function CompetitionArena() {
     try {
       const { data: compData } = await db.from('competitions').select('*').eq('id', id).maybeSingle();
       setCompetition(compData as Competition);
-      
+
       const { data: partData } = await db.from('participants').select('*').eq('competition_id', id).eq('user_id', user.id).maybeSingle();
       if (!partData) { setIsLoading(false); return; }
       if (partData.status === 'kicked' || partData.status === 'banned') { setIsKicked(true); setIsLoading(false); return; }
@@ -84,16 +107,26 @@ export default function CompetitionArena() {
     }
   };
 
-  const formatTime = (ms: number) => {
-    const totalSeconds = Math.floor(ms / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    return hours > 0 ? `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}` : `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
-
   const handleSubmissionResult = (passed: boolean, questionId: string) => {
     if (passed) setSolvedQuestions(prev => new Set([...prev, questionId]));
+  };
+
+  const confirmLeave = () => {
+    setShowLeaveDialog(false);
+    if (blocker.state === 'blocked') {
+      blocker.proceed();
+    } else if (pendingNavPath) {
+      navigate(pendingNavPath);
+    }
+    setPendingNavPath(null);
+  };
+
+  const cancelLeave = () => {
+    setShowLeaveDialog(false);
+    setPendingNavPath(null);
+    if (blocker.state === 'blocked') {
+      blocker.reset();
+    }
   };
 
   if (isLoading) return <MainLayout><div className="flex items-center justify-center h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div></MainLayout>;
@@ -109,12 +142,29 @@ export default function CompetitionArena() {
             <h1 className="text-2xl font-display font-bold">{competition.title}</h1>
             <p className="text-muted-foreground">{solvedQuestions.size}/{questions.length} problems solved</p>
           </div>
-          <Card className={`glass-card ${timeLeft < 300000 ? 'border-destructive neon-glow-red' : ''}`}>
-            <CardContent className="py-3 px-6 flex items-center gap-2">
-              <Clock className={`h-5 w-5 ${timeLeft < 300000 ? 'text-destructive' : 'text-primary'}`} />
-              <span className={`font-mono text-2xl font-bold ${timeLeft < 300000 ? 'text-destructive' : ''}`}>{formatTime(timeLeft)}</span>
-            </CardContent>
-          </Card>
+          <div className="flex items-center gap-3">
+            {/* Leave button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowLeaveDialog(true)}
+              className="border-destructive/50 text-destructive hover:bg-destructive/10"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Leave
+            </Button>
+
+            {/* Timer */}
+            <Card className={`glass-card ${timer.isUrgent ? 'border-destructive neon-glow-red' : timer.isExpired ? 'border-muted' : ''}`}>
+              <CardContent className="py-3 px-6 flex items-center gap-2">
+                <Clock className={`h-5 w-5 ${timer.isUrgent ? 'text-destructive animate-pulse' : timer.isExpired ? 'text-muted-foreground' : 'text-primary'}`} />
+                <span className={`font-mono text-2xl font-bold ${timer.isUrgent ? 'text-destructive' : timer.isExpired ? 'text-muted-foreground' : ''}`}>
+                  {timer.formatted}
+                </span>
+                {timer.isExpired && <Badge variant="destructive" className="ml-2">Ended</Badge>}
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         <div className="flex gap-4 h-[calc(100vh-12rem)]">
@@ -144,6 +194,28 @@ export default function CompetitionArena() {
           <Card className="glass-card w-64 shrink-0"><Leaderboard competitionId={competition.id} /></Card>
         </div>
       </div>
+
+      {/* Leave Competition Confirmation Dialog */}
+      <Dialog open={showLeaveDialog} onOpenChange={(open) => { if (!open) cancelLeave(); }}>
+        <DialogContent className="glass-card">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              Leave Competition?
+            </DialogTitle>
+            <DialogDescription>
+              Your progress and submissions will be preserved. You can rejoin using the access code, but the timer will keep running.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={cancelLeave}>Stay</Button>
+            <Button variant="destructive" onClick={confirmLeave}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Leave Competition
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
