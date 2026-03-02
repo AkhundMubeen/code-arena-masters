@@ -184,7 +184,7 @@ export function BattleCreator() {
         <CardHeader><CardTitle>Create New Battle</CardTitle><CardDescription>Set up a new coding competition</CardDescription></CardHeader>
         <CardContent className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2"><Label htmlFor="title">Competition Title</Label><Input id="title" placeholder="e.g., MUET Coding Championship 2024" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+            <div className="space-y-2"><Label htmlFor="title">Competition Title</Label><Input id="title" placeholder="e.g., UNI Coding Championship 2024" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
             <div className="space-y-2"><Label htmlFor="startTime">Start Time</Label><Input id="startTime" type="datetime-local" value={startTime} onChange={(e) => setStartTime(e.target.value)} /></div>
           </div>
           <div className="space-y-2">

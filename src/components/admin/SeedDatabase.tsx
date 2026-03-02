@@ -291,7 +291,7 @@ An integer representing the count of vowels.
 Input: Competitive Programming
 Output: 8
 \`\`\``,
-    hidden_input: "MUET Code Arena Championship 2024",
+    hidden_input: "UNI Code Arena Championship 2024",
     expected_output: "12",
     default_code_python: `def count_vowels(s):
     # Write your code here
