@@ -45,8 +45,35 @@ export default function GodView() {
 
   const fetchSubmissions = async () => {
     if (!id) return;
-    const { data: subsData } = await db.from('submissions').select(`*, profiles:user_id (id, user_id, username), questions:question_id (id, title, difficulty)`).eq('competition_id', id).order('submitted_at', { ascending: false });
-    setSubmissions((subsData as SubmissionWithDetails[]) || []);
+    // Fetch submissions without FK joins
+    const { data: subsData } = await db.from('submissions').select('*').eq('competition_id', id).order('submitted_at', { ascending: false });
+    
+    if (!subsData || subsData.length === 0) {
+      setSubmissions([]);
+      return;
+    }
+
+    // Get unique user_ids and question_ids
+    const userIds = [...new Set(subsData.map((s: any) => s.user_id))];
+    const questionIds = [...new Set(subsData.map((s: any) => s.question_id))];
+
+    // Fetch profiles and questions separately
+    const [{ data: profiles }, { data: questions }] = await Promise.all([
+      db.from('profiles').select('user_id, username').in('user_id', userIds),
+      db.from('questions').select('id, title, difficulty').in('id', questionIds),
+    ]);
+
+    const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+    const questionMap = new Map((questions || []).map((q: any) => [q.id, q]));
+
+    // Attach profile and question data to submissions
+    const enriched = subsData.map((sub: any) => ({
+      ...sub,
+      profiles: profileMap.get(sub.user_id) || { username: 'Unknown' },
+      questions: questionMap.get(sub.question_id) || { title: 'Unknown', difficulty: 'easy' },
+    }));
+
+    setSubmissions(enriched as SubmissionWithDetails[]);
   };
 
   const subscribeToSubmissions = () => {
