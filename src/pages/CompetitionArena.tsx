@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useParams, Navigate, useNavigate, useBlocker } from 'react-router-dom';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { CodeEditor } from '@/components/arena/CodeEditor';
 import { Leaderboard } from '@/components/arena/Leaderboard';
@@ -34,19 +34,26 @@ export default function CompetitionArena() {
 
   const timer = useCompetitionTimer(competition?.start_time, competition?.duration_minutes);
 
-  // Block navigation while competition is active
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      !timer.isExpired && !!participant && !isKicked && currentLocation.pathname !== nextLocation.pathname
-  );
+  // Override navigate to intercept navigation attempts
+  const originalNavigate = useRef(navigate);
+  originalNavigate.current = navigate;
 
-  // When blocker triggers, show leave dialog
+  const isCompetitionActive = !timer.isExpired && !!participant && !isKicked;
+
+  // Intercept back/forward browser buttons via popstate
   useEffect(() => {
-    if (blocker.state === 'blocked') {
-      setPendingNavPath(blocker.location.pathname);
+    if (!isCompetitionActive) return;
+    const handlePopState = (e: PopStateEvent) => {
+      // Push state back to prevent leaving
+      window.history.pushState(null, '', window.location.href);
+      setPendingNavPath('/competitions');
       setShowLeaveDialog(true);
-    }
-  }, [blocker.state]);
+    };
+    // Push an extra history entry so back button triggers popstate instead of leaving
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [isCompetitionActive]);
 
   // Block browser tab close / refresh
   useEffect(() => {
@@ -113,9 +120,7 @@ export default function CompetitionArena() {
 
   const confirmLeave = () => {
     setShowLeaveDialog(false);
-    if (blocker.state === 'blocked') {
-      blocker.proceed();
-    } else if (pendingNavPath) {
+    if (pendingNavPath) {
       navigate(pendingNavPath);
     }
     setPendingNavPath(null);
@@ -124,9 +129,6 @@ export default function CompetitionArena() {
   const cancelLeave = () => {
     setShowLeaveDialog(false);
     setPendingNavPath(null);
-    if (blocker.state === 'blocked') {
-      blocker.reset();
-    }
   };
 
   if (isLoading) return <MainLayout><div className="flex items-center justify-center h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div></MainLayout>;
