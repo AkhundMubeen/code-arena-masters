@@ -193,7 +193,7 @@ export default function CompetitionArena() {
             {selectedQuestion ? <CodeEditor question={selectedQuestion} competitionId={competition.id} onSubmissionResult={(passed) => handleSubmissionResult(passed, selectedQuestion.id)} /> : <Card className="glass-card h-full flex items-center justify-center"><p className="text-muted-foreground">Select a problem to start coding</p></Card>}
           </div>
 
-          <Card className="glass-card w-64 shrink-0"><Leaderboard competitionId={competition.id} /></Card>
+          <Card className="glass-card w-64 shrink-0"><Leaderboard competitionId={competition.id} totalQuestions={questions.length} contestStartTime={competition.start_time} /></Card>
         </div>
       </div>
 
