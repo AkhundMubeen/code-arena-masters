@@ -37,19 +37,35 @@ export function Leaderboard({ competitionId, totalQuestions = 10 }: LeaderboardP
         .select(`user_id, question_id, auto_status, manual_status, submitted_at`)
         .eq('competition_id', competitionId);
       
-      // Fetch participants with their status and profile info
+      // Fetch participants with their status
       const { data: participants } = await db
         .from('participants')
-        .select(`user_id, status, profiles:user_id (username)`)
+        .select(`user_id, status`)
         .eq('competition_id', competitionId);
 
-      if (!submissions || !participants) return;
+      if (!participants) return;
+
+      // Get unique user IDs from participants
+      const userIds = participants.map((p: any) => p.user_id);
+
+      // Fetch profiles separately (no FK needed)
+      const { data: profiles } = await db
+        .from('profiles')
+        .select('user_id, username')
+        .in('user_id', userIds);
 
       // Create a map of participant info
+      const profileMap = new Map<string, string>();
+      if (profiles) {
+        for (const p of profiles) {
+          profileMap.set(p.user_id, p.username);
+        }
+      }
+
       const participantMap = new Map<string, { username: string; status: 'active' | 'banned' | 'kicked' }>();
       for (const p of participants) {
         participantMap.set(p.user_id, {
-          username: (p.profiles as any)?.username || 'Unknown',
+          username: profileMap.get(p.user_id) || 'Unknown',
           status: p.status as 'active' | 'banned' | 'kicked',
         });
       }

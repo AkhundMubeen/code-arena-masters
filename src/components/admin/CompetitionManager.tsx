@@ -36,9 +36,18 @@ export function CompetitionManager() {
 
   const fetchParticipants = async (competitionId: string) => {
     try {
-      const { data, error } = await db.from('participants').select(`*, profiles:user_id (id, user_id, username, department)`).eq('competition_id', competitionId);
+      const { data: partData, error } = await db.from('participants').select('*').eq('competition_id', competitionId);
       if (error) throw error;
-      setParticipants((data as ParticipantWithProfile[]) || []);
+      
+      const userIds = (partData || []).map((p: any) => p.user_id);
+      const { data: profiles } = await db.from('profiles').select('user_id, id, username, department').in('user_id', userIds);
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+      
+      const enriched = (partData || []).map((p: any) => ({
+        ...p,
+        profiles: profileMap.get(p.user_id) || { username: 'Unknown', department: null },
+      }));
+      setParticipants(enriched as ParticipantWithProfile[]);
     } catch (error) {
       console.error('Error fetching participants:', error);
     }
