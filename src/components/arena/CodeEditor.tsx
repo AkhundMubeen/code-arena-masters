@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import { useAuth } from '@/hooks/useAuth';
 import { db } from '@/lib/db';
@@ -37,6 +37,14 @@ export function CodeEditor({ question, competitionId, onSubmissionResult, onClos
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<'pass' | 'fail' | null>(null);
   const [activeTab, setActiveTab] = useState('code');
+
+  // Reset state when question changes
+  useEffect(() => {
+    setCode(getDefaultCode(language));
+    setOutput('');
+    setResult(null);
+    setActiveTab('code');
+  }, [question.id]);
 
   const getDefaultCode = (lang: ProgrammingLanguage) => {
     switch (lang) {
