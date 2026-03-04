@@ -201,10 +201,15 @@ export default function CompetitionArena() {
                   <p className="text-muted-foreground max-w-xs">
                     The competition has ended. You solved {solvedQuestions.size}/{questions.length} problems.
                   </p>
-                  <Button onClick={() => navigate('/competitions')} className="mt-4">
-                    <ArrowRight className="h-4 w-4 mr-2" />
-                    Back to Competitions
-                  </Button>
+                  <div className="flex gap-3 mt-4">
+                    <Button variant="outline" onClick={() => navigate('/competitions')}>
+                      Back to Competitions
+                    </Button>
+                    <Button onClick={() => navigate(`/competition/${id}/results`)}>
+                      <Trophy className="h-4 w-4 mr-2" />
+                      View Results
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
