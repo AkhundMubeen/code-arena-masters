@@ -14,7 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { Check, Clock, Loader2, Trophy, AlertTriangle, LogOut } from 'lucide-react';
+import { Check, Clock, Loader2, Trophy, AlertTriangle, LogOut, Timer, ArrowRight } from 'lucide-react';
 import { Question, Competition, DifficultyLevel, Participant } from '@/lib/supabase-types';
 
 export default function CompetitionArena() {
@@ -187,8 +187,27 @@ export default function CompetitionArena() {
             </CardContent>
           </Card>
 
-          <div className="flex-1 min-w-0">
-            {selectedQuestion ? <CodeEditor question={selectedQuestion} competitionId={competition.id} onSubmissionResult={(passed) => handleSubmissionResult(passed, selectedQuestion.id)} /> : <Card className="glass-card h-full flex items-center justify-center"><p className="text-muted-foreground">Select a problem to start coding</p></Card>}
+          <div className="flex-1 min-w-0 relative">
+            {selectedQuestion ? <CodeEditor question={selectedQuestion} competitionId={competition.id} onSubmissionResult={(passed) => handleSubmissionResult(passed, selectedQuestion.id)} disabled={timer.isExpired} /> : <Card className="glass-card h-full flex items-center justify-center"><p className="text-muted-foreground">Select a problem to start coding</p></Card>}
+            
+            {/* Time's Up Overlay */}
+            {timer.isExpired && (
+              <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg">
+                <div className="text-center space-y-4 p-8">
+                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-destructive/20 mb-2">
+                    <Timer className="h-10 w-10 text-destructive" />
+                  </div>
+                  <h2 className="text-3xl font-display font-bold text-destructive">Time's Up!</h2>
+                  <p className="text-muted-foreground max-w-xs">
+                    The competition has ended. You solved {solvedQuestions.size}/{questions.length} problems.
+                  </p>
+                  <Button onClick={() => navigate('/competitions')} className="mt-4">
+                    <ArrowRight className="h-4 w-4 mr-2" />
+                    Back to Competitions
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           <Card className="glass-card w-64 shrink-0"><Leaderboard competitionId={competition.id} totalQuestions={questions.length} contestStartTime={competition.start_time} /></Card>

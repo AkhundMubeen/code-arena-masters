@@ -19,6 +19,7 @@ interface CodeEditorProps {
   competitionId?: string;
   onSubmissionResult?: (passed: boolean) => void;
   onClose?: () => void;
+  disabled?: boolean;
 }
 
 const LANGUAGE_CONFIG: Record<ProgrammingLanguage, { version: string; pistonLang: string }> = {
@@ -27,7 +28,7 @@ const LANGUAGE_CONFIG: Record<ProgrammingLanguage, { version: string; pistonLang
   cpp: { version: '10.2.0', pistonLang: 'cpp' },
 };
 
-export function CodeEditor({ question, competitionId, onSubmissionResult, onClose }: CodeEditorProps) {
+export function CodeEditor({ question, competitionId, onSubmissionResult, onClose, disabled }: CodeEditorProps) {
   const { user, refreshProfile } = useAuth();
   const { toast } = useToast();
   
@@ -156,7 +157,7 @@ export function CodeEditor({ question, competitionId, onSubmissionResult, onClos
               <SelectItem value="cpp">C++</SelectItem>
             </SelectContent>
           </Select>
-          <Button onClick={executeCode} disabled={isRunning} size="sm" className={`neon-glow-green ${isRunning ? 'animate-pulse' : ''}`}>
+          <Button onClick={executeCode} disabled={isRunning || disabled} size="sm" className={`neon-glow-green ${isRunning ? 'animate-pulse' : ''}`}>
             {isRunning ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Running...</> : <><Play className="mr-2 h-4 w-4" />Run Code</>}
           </Button>
         </div>
