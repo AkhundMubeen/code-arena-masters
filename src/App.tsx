@@ -11,6 +11,7 @@ import Competitions from "@/pages/Competitions";
 import CompetitionArena from "@/pages/CompetitionArena";
 import AdminDashboard from "@/pages/AdminDashboard";
 import GodView from "@/pages/GodView";
+import CompetitionResults from "@/pages/CompetitionResults";
 import Profile from "@/pages/Profile";
 import NotFound from "./pages/NotFound";
 
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/competition/:id" element={<CompetitionArena />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/god-view/:id" element={<GodView />} />
+            <Route path="/competition/:id/results" element={<CompetitionResults />} />
             <Route path="/profile" element={<Profile />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
