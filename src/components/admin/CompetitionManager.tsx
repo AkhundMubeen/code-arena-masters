@@ -25,8 +25,30 @@ export function CompetitionManager() {
     try {
       const { data, error } = await db.from('competitions').select('*').order('created_at', { ascending: false });
       if (error) throw error;
-      setCompetitions((data as Competition[]) || []);
-      if (data?.length) setSelectedCompetition(data[0] as Competition);
+
+      // Auto-end competitions whose time has expired
+      const now = Date.now();
+      const expiredIds: string[] = [];
+      const updated = ((data as Competition[]) || []).map((comp) => {
+        if (comp.status === 'live') {
+          const endTime = new Date(comp.start_time).getTime() + comp.duration_minutes * 60 * 1000;
+          if (now >= endTime) {
+            expiredIds.push(comp.id);
+            return { ...comp, status: 'ended' as const };
+          }
+        }
+        return comp;
+      });
+
+      // Batch-update expired competitions in DB
+      if (expiredIds.length > 0) {
+        await Promise.all(
+          expiredIds.map((id) => db.from('competitions').update({ status: 'ended' }).eq('id', id))
+        );
+      }
+
+      setCompetitions(updated);
+      if (updated.length) setSelectedCompetition(updated[0]);
     } catch (error) {
       console.error('Error fetching competitions:', error);
     } finally {
