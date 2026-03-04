@@ -120,9 +120,7 @@ export default function CompetitionArena() {
 
   const confirmLeave = () => {
     setShowLeaveDialog(false);
-    if (pendingNavPath) {
-      navigate(pendingNavPath);
-    }
+    navigate(pendingNavPath || '/competitions');
     setPendingNavPath(null);
   };
 
