@@ -3,9 +3,8 @@ import { BattleCreator } from '@/components/admin/BattleCreator';
 import { QuestionBank } from '@/components/admin/QuestionBank';
 import { CompetitionManager } from '@/components/admin/CompetitionManager';
 import { SeedDatabase } from '@/components/admin/SeedDatabase';
-import { UserRoleManager } from '@/components/admin/UserRoleManager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, PlusCircle, BookOpen, Trophy, Database, Users } from 'lucide-react';
+import { Shield, PlusCircle, BookOpen, Trophy, Database } from 'lucide-react';
 
 export default function AdminDashboard() {
   return (
@@ -24,14 +23,10 @@ export default function AdminDashboard() {
 
         {/* Admin Tabs */}
         <Tabs defaultValue="competitions" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 max-w-2xl">
+          <TabsList className="grid w-full grid-cols-4 max-w-lg">
             <TabsTrigger value="competitions" className="flex items-center gap-2">
               <Trophy className="h-4 w-4" />
               Battles
-            </TabsTrigger>
-            <TabsTrigger value="users" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Users
             </TabsTrigger>
             <TabsTrigger value="create" className="flex items-center gap-2">
               <PlusCircle className="h-4 w-4" />
@@ -49,10 +44,6 @@ export default function AdminDashboard() {
 
           <TabsContent value="competitions">
             <CompetitionManager />
-          </TabsContent>
-
-          <TabsContent value="users">
-            <UserRoleManager />
           </TabsContent>
 
           <TabsContent value="create">
