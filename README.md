@@ -32,7 +32,7 @@ To run UniCodeArena locally, follow these steps:
 
 ### 1. Clone the repository
 ```bash
-git clone [https://github.com/AkhundMubeen/code-arena-masters.git](https://github.com/AkhundMubeen/code-arena-masters.git)
+git clone https://github.com/AkhundMubeen/code-arena-masters.git
 cd code-arena-masters
 ```
 
