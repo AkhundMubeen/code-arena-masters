@@ -1,7 +1,7 @@
 # 🛡️ UniCodeArena (Code Arena Masters)
 
 > **A real-time, high-performance competitive programming platform built to power university-level coding battles.**
-> *Submitted for the CircuitBreak 2026 Hackathon.*
+> *Submitted for the LUMA 2026 Hackathon.*
 
 [![Live Demo](https://img.shields.io/badge/Demo-Live_Site-success?style=for-the-badge)](https://uni-code-arena.vercel.app/)
 [![Demo Video](https://img.shields.io/badge/YouTube-Watch_Demo-red?style=for-the-badge&logo=youtube)](https://www.youtube.com/watch?v=NvPSGfQcLVE)
